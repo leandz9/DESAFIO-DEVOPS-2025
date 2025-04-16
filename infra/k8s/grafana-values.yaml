@@ -1,0 +1,123 @@
+replicas: 1
+
+image:
+  repository: grafana/grafana
+  tag: 9.1.7
+
+service:
+  type: NodePort
+
+ingress:
+  enabled: false
+
+resources:
+  requests:
+    cpu: 50m
+
+grafana.ini:
+  server:
+    root_url: http://localhost:3000
+    enable_gzip: true
+
+plugins:
+  - grafana-piechart-panel
+
+adminUser: admin
+adminPassword: "admin"
+
+datasources:
+  datasources.yaml:
+    apiVersion: 1
+    datasources:
+      - name: Prometheus
+        type: prometheus
+        url: http://prometheus-server.default.svc.cluster.local
+        access: proxy
+        isDefault: true
+        jsonData:
+          timeInterval: "30s"
+
+dashboardProviders:
+  dashboardproviders.yaml:
+    apiVersion: 1
+    providers:
+      - name: "kubernetes"
+        orgId: 1
+        folder: "Kubernetes"
+        type: file
+        disableDeletion: true
+        editable: false
+        options:
+          path: /var/lib/grafana/dashboards/kubernetes
+      - name: "desafio-devops-2025"
+        orgId: 1
+        folder: "desafio-devops-2025"
+        type: file
+        disableDeletion: true
+        editable: false
+        options:
+          path: /var/lib/grafana/dashboards/desafio-devops-2025
+
+
+dashboards:
+  kubernetes:
+    global:
+      url: https://raw.githubusercontent.com/dotdc/grafana-dashboards-kubernetes/master/dashboards/k8s-views-global.json
+    nodes:
+      url: https://raw.githubusercontent.com/dotdc/grafana-dashboards-kubernetes/master/dashboards/k8s-views-nodes.json
+
+  desafio-devops-2025:
+    app-metrics:
+      json: |
+        {
+          "id": null,
+          "uid": "app-metrics-dashboard",
+          "title": "App Metrics (Custom)",
+          "tags": ["apps", "python", "node", "redis"],
+          "timezone": "browser",
+          "schemaVersion": 36,
+          "version": 2,
+          "refresh": "10s",
+          "panels": [
+            {
+              "type": "graph",
+              "title": "Request Count by Endpoint",
+              "datasource": "Prometheus",
+              "targets": [
+                {
+                  "expr": "sum(rate(app_request_count_total[1m])) by (instance)",
+                  "legendFormat": "{{instance}}"
+                }
+              ],
+              "gridPos": {"x": 0, "y": 0, "w": 12, "h": 8}
+            },
+            {
+              "type": "graph",
+              "title": "Cache Hit vs Miss (Rate)",
+              "datasource": "Prometheus",
+              "targets": [
+                {
+                  "expr": "sum(rate(app_cache_hit_count_total[1m])) by (instance)",
+                  "legendFormat": "HIT {{instance}}"
+                },
+                {
+                  "expr": "sum(rate(app_cache_miss_count_total[1m])) by (instance)",
+                  "legendFormat": "MISS {{instance}}"
+                }
+              ],
+              "gridPos": {"x": 12, "y": 0, "w": 12, "h": 8}
+            },
+            {
+              "type": "heatmap",
+              "title": "Request Latency Histogram (p95)",
+              "datasource": "Prometheus",
+              "targets": [
+                {
+                  "expr": "histogram_quantile(0.95, sum(rate(app_request_latency_seconds_bucket[5m])) by (le, instance))",
+                  "legendFormat": "{{instance}}"
+                }
+              ],
+              "gridPos": {"x": 0, "y": 8, "w": 24, "h": 9}
+            }
+          ]
+        }

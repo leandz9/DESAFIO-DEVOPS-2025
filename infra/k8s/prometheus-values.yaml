@@ -1,0 +1,19 @@
+server:
+  service:
+    type: NodePort
+  global:
+    scrape_interval: 15s
+
+serviceAccounts:
+  server:
+    create: true
+    name: prometheus
+    annotations: {}
+
+extraScrapeConfigs: |
+  - job_name: 'apps-monitor'
+    static_configs:
+      - targets:
+          - app1-service.default.svc.cluster.local:80
+          - app2-service.default.svc.cluster.local:80
+
